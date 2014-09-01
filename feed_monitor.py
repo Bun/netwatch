@@ -86,7 +86,7 @@ def _fetch_feed(memory, formatter, outq):
             outq.add({'msg': msg, 'target': memory.target})
 
     new_entries = feed_formatter(memory, feed, formatter)
-    N = 3
+    N = 10
 
     # Show last N entries
     for entry in new_entries[-N:]:
@@ -152,18 +152,15 @@ def spam_queue(q, socket):
         return
 
     rpc = Client(socket)
-    i = 0
+    sleep_time = 0.1
 
     while not q.empty():
         msg = q.peek()
         # TODO: confirmation
         rpc.send(msg)
         q.get()
-        i += 1
-
-        if i > 2:
-            i = 0
-            sleep(0.25)
+        sleep(sleep_time)
+        sleep_time = min(1.5, sleep_time * 2)
 
 # -----------------------------------------------------------------------------
 
