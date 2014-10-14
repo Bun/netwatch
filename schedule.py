@@ -10,6 +10,10 @@ def schedule_blob(blob, now=None):
     if now is None:
         now = datetime.now()
 
+    if 'minutes' in blob:
+        delta = timedelta(minutes=blob['minutes'])
+        return now.replace(minute=0, second=0, microsecond=0) + delta
+
     if 'hours' in blob:
         delta = timedelta(hours=blob['hours'])
         # Roughly:
