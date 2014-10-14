@@ -80,7 +80,7 @@ def _fetch_feed(memory, formatter, outq):
             msg = u'\x02{}\x02 » Feed moved: {} (HTTP {})'.format(memory.prefix, feed.href, feed.status)
             outq.add({'msg': msg, 'target': memory.target})
 
-        elif (feed.status < 200 or feed.status > 299) and feed.status != 304:
+        elif (feed.status < 200 or feed.status > 299) and feed.status != 304 and feed.status != 503:
             # Report status
             msg = u'\x02{}\x02 » Error {}'.format(memory.prefix, feed.status)
             outq.add({'msg': msg, 'target': memory.target})
