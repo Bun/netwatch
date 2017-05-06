@@ -1,5 +1,9 @@
 from time import time
 from json import load, dump
+from datetime import timedelta
+
+CACHE_MIN_SIZE = 64
+CACHE_MAX_TIME = timedelta(days=31).total_seconds()
 
 
 def memory_load(fname):
@@ -27,8 +31,12 @@ def memory_load(fname):
 
 
 def memory_save(fname, memory):
-    fp = open(fname, 'w')
-    dump(memory, fp)
+    history = memory.get('history', {})
+    if len(history) > CACHE_MIN_SIZE:
+        expire = time() - CACHE_MAX_TIME
+        memory['history'] = {k: v for k, v in history.items() if v > expire}
+    with open(fname, 'w') as fp:
+        dump(memory, fp)
 
 
 def memory_learn(mem, key):
