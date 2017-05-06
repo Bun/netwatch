@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+
+from os import listdir
+from os.path import join
+from json import load, JSONDecodeError
+from datetime import datetime
+
+
+def friendly_time(ts, now):
+    if ts is None:
+        return '-'
+    dt = datetime.fromtimestamp(ts)
+    #return str(dt)
+    return str(dt - now)
+
+
+def show_cache(path):
+    now = datetime.now()
+    table = []
+    keys = ('Name', 'Last', 'Next', 'Cache size')
+    width = [len(k) for k in keys]
+    for name in sorted(listdir(path)):
+        fname = join(path, name)
+        ok = False
+        try:
+            with open(fname) as fp:
+                blob = load(fp)
+            if isinstance(blob, dict):
+                table.append((name,
+                              friendly_time(blob.get('schedule_last_sync'), now),
+                              friendly_time(blob.get('schedule_next_sync'), now),
+                              str(len(blob.get('history', {})))))
+                ok = True
+        except JSONDecodeError as e:
+            pass
+        if not ok:
+            table.append((name, '?', '?', '?'))
+        width = [max(a, len(b)) for a, b in zip(width, table[-1])]
+
+    print(' '.join(k.ljust(w) for w, k in zip(width, keys)))
+    print(' '.join('-' * w for w in width))
+    for r in table:
+        print(' '.join(v.ljust(w) if i == 0 else v.rjust(w)
+                       for i, (w, v) in enumerate(zip(width, r))))
+
+
+
+if __name__ == '__main__':
+    from argparse import ArgumentParser
+    parser = ArgumentParser(description='netwatch')
+    parser.add_argument('--session-data', default='.session',
+                        help='Directory to store state in between runs')
+    opts = parser.parse_args()
+    show_cache(opts.session_data)
