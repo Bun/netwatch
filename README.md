@@ -25,7 +25,7 @@ A simple cron-style usage example:
 
     #!/bin/sh
     cd $HOME/code/netwatch/
-    venv/bin/netwatch 2>>log | bin/pegasus-publish
+    venv/bin/netwatch --session-data .fc feeds.yml 2>>log | bin/pegasus-publish
 
 
 ## TODO

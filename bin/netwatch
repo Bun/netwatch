@@ -8,10 +8,12 @@ from datetime import datetime, timedelta
 from urllib.error import URLError
 from socket import timeout
 from json import dumps
+from os.path import join
 
 from netwatch.memory import memory_save, memory_learn
 from netwatch.schedule import schedule_blob
 
+CACHE_PATH = '.fc'
 Feed = namedtuple('Feed', ('info', 'memory'))
 
 
@@ -28,7 +30,7 @@ def _cache_file(feed):
 
     name = re.sub(r'[^a-zA-Z0-9_]+', '-', name)
     name = name.strip('-').lower()
-    return '.fc/' + name
+    return join(CACHE_PATH, name)
 
 
 def filter_new_items(memory, items):
@@ -114,18 +116,26 @@ def relay_message(default_target, info, entries):
 
 
 if __name__ == '__main__':
+    from argparse import ArgumentParser
     from socket import setdefaulttimeout
     from netwatch.memory import memory_load
     from netwatch.utils import load_config
-    from subprocess import Popen, PIPE
 
     setdefaulttimeout(20)
+
+    parser = ArgumentParser(description='netwatch')
+    parser.add_argument('--session-data', default='.fc',
+                        help='Directory to store state in between runs')
+    parser.add_argument('config_path', default='feeds.yml',
+                        help='Path to configuration file')
+    opts = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO,
         format='[%(asctime)s] %(levelname)s: %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S')
 
-    config = load_config('feeds.yml')
+    CACHE_PATH = opts.session_data
+    config = load_config(opts.config_path)
     default_target = config['target']
 
     run(config, 'feeds', default_target)
