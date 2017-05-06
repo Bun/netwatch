@@ -1,6 +1,9 @@
 # Each message is marked with a target
 target: '#default-target'
 
+# Be kind and identify yourself (feedparser)
+user-agent-extra: ' +https://example.com/my-contact-form'
+
 
 #
 # Twitter

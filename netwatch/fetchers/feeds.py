@@ -9,8 +9,14 @@ from base64 import b64encode
 from ..utils import dehtml
 
 
-feedparser.USER_AGENT += ' +https://nx3d.org/contact'
 feedparser.chardet = None  # broken
+
+
+def init(config):
+    user_agent = config.get('user-agent-extra')
+    if user_agent:
+        feedparser.USER_AGENT += user_agent
+
 
 
 def _get_feed(url, mod_info, auth):
