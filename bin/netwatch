@@ -13,7 +13,7 @@ from os.path import join
 from netwatch.memory import memory_save, memory_learn
 from netwatch.schedule import schedule_blob
 
-CACHE_PATH = '.fc'
+CACHE_PATH = '.session'
 Feed = namedtuple('Feed', ('info', 'memory'))
 
 
@@ -124,7 +124,7 @@ if __name__ == '__main__':
     setdefaulttimeout(20)
 
     parser = ArgumentParser(description='netwatch')
-    parser.add_argument('--session-data', default='.fc',
+    parser.add_argument('--session-data', default='.session',
                         help='Directory to store state in between runs')
     parser.add_argument('config_path', default='feeds.yml',
                         help='Path to configuration file')

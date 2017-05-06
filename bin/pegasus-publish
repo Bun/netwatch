@@ -106,7 +106,7 @@ if __name__ == '__main__':
     from sys import stdin
     from json import loads
 
-    queue_file = '.fc/queue'
+    queue_file = '.session/queue'
     socket_file = '/home/ben/code/irc/rpc.sock'
 
     entries = load_queue(queue_file)

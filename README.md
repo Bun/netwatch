@@ -25,12 +25,27 @@ A simple cron-style usage example:
 
     #!/bin/sh
     cd $HOME/code/netwatch/
-    venv/bin/netwatch --session-data .fc feeds.yml 2>>log | bin/pegasus-publish
+    venv/bin/netwatch feeds.yml 2>>log | bin/pegasus-publish
+
+The `pegasus-publish` script is just an example: in this case it outputs
+messages over a UNIX socket to an IRC bot.
+
+
+## Session data
+
+Netwatch stores its session data on disk as JSON object:
+
+* The scheduled next attempt
+* Recently seen items (to determine which items are new)
+* Cache-related headers, such as Last-Modified/E-Tag
+
+Each feed has a unique name associated with it which is used to determine the
+path on disk for the session object. The default path is '.session' in the
+current working directory.
 
 
 ## TODO
 
-- Fix some of the hardcoded paths/defaults
 - Tool to inspect cache/view scheduled times
 - Error monitoring
 - Mail?

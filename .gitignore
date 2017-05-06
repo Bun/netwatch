@@ -1,5 +1,5 @@
 /feeds.yml
 /run.sh
 /scratch/
-/.env/
-/.fc/
+/venv/
+/.session/
