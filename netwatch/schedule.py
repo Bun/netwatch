@@ -7,19 +7,20 @@ def schedule_from_datetime(dt, h, m):
 
 
 def schedule_blob(blob, now=None):
+    """Compute next time event should occur, disregarding seconds and
+    microseconds."""
     if now is None:
         now = datetime.now()
 
     if 'minutes' in blob:
         delta = timedelta(minutes=blob['minutes'])
-        return now.replace(minute=0, second=0, microsecond=0) + delta
+        return now.replace(second=0, microsecond=0) + delta
 
     if 'hours' in blob:
         delta = timedelta(hours=blob['hours'])
-        # Roughly:
-        # now.hour + blob.hours - ((now.hour + blob.at) % blob.hours))
+        minute = blob.get('at', 0)
         # This might leak into the next day
-        return now.replace(minute=0, second=0, microsecond=0) + delta
+        return now.replace(minute=minute, second=0, microsecond=0) + delta
 
     if 'days' in blob:
         days = max(blob['days'], 1)

@@ -1,3 +1,5 @@
-feeds.yml
-run.sh
-scratch/
+/feeds.yml
+/run.sh
+/scratch/
+/.env/
+/.fc/

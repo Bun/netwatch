@@ -28,6 +28,9 @@ class FQueue(object):
     def add(self, entry):
         self._entries.append(entry)
 
+    def extend(self, entry):
+        self._entries.extend(entry)
+
     def peek(self):
         return self._entries[0]
 
@@ -36,4 +39,4 @@ class FQueue(object):
 
     def save(self):
         with open(self.qfile, 'w') as fp:
-            dump(self._entries, fp)
+            dump(self._entries, fp, sort_keys=True)

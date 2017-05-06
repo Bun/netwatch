@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+# coding: utf-8
+
+import re
+import logging
+from collections import namedtuple
+from datetime import datetime, timedelta
+from urllib.error import URLError
+from socket import timeout
+from json import dumps
+
+from netwatch.memory import memory_save, memory_learn
+from netwatch.schedule import schedule_blob
+
+Feed = namedtuple('Feed', ('info', 'memory'))
+
+
+def _cache_file(feed):
+    """Determine filename for cached feed information"""
+
+    # TODO: will break if cache file is reused
+    name = feed['url']
+
+    if feed.get('name'):
+        name = feed['name']
+    elif feed.get('prefix'):
+        name = feed['prefix']
+
+    name = re.sub(r'[^a-zA-Z0-9_]+', '-', name)
+    name = name.strip('-').lower()
+    return '.fc/' + name
+
+
+def filter_new_items(memory, items):
+    new_entries = []
+    for entry in items:
+        key = entry.get('key') or entry.get('url')
+        if key and memory_learn(memory, key):
+            continue
+        if len(new_entries) < 6:
+            new_entries.append(entry)
+    return new_entries
+
+
+def run(cfg, k, default_target):
+    mod = getattr(__import__('netwatch.fetchers.' + k).fetchers, k)
+    if hasattr(mod, 'init'):
+        mod.init(cfg)
+    fetcher = mod.fetch
+
+    for blob in cfg[k]:
+        cache_file = _cache_file(blob)
+        feed = Feed(blob, memory_load(cache_file))
+        now = datetime.now()
+        next_sync = feed.memory.get('schedule_next_sync')
+
+        if next_sync and now.timestamp() < next_sync:
+            continue
+
+        url = feed.info['url']
+        #logging.debug('%s | Fetching', url)
+        try:
+            result = fetcher(feed.memory, feed.info)
+        except (URLError, timeout) as e:
+            logging.error('%s | Error while fetching feed: %s: %s', url,
+                          type(e), str(e))
+            continue
+        except Exception as e:
+            logging.error('%s | Error while fetching feed: %s: %s', url,
+                          type(e), str(e))
+            continue
+
+        if result is False:
+            # Something broke, schedule again
+            logging.warn('%s | Reschedule after failure', url)
+            feed.memory['schedule_next_sync'] = (now + timedelta(hours=3)).timestamp()
+
+        else:
+            # Schedule succesful attempt
+            sync = schedule_blob(blob, now)
+            feed.memory['schedule_next_sync'] = sync.timestamp()
+
+            entries = filter_new_items(feed.memory, result)
+            # TODO: limit
+            relay_message(default_target, feed.info, entries)
+
+        # Save mem
+        feed.memory['schedule_last_sync'] = now.timestamp()
+        memory_save(cache_file, feed.memory)
+
+
+def relay_message(default_target, info, entries):
+    """Send a message to the publishing process"""
+    target = info.get('target') or default_target
+    prefix = info.get('prefix', '')
+    # TODO: improve this
+    show = info.get('show', '').split()
+    summary = 'summary' in show
+    nourl = 'nourl' in show
+    for entry in entries:
+        msg = {'target': target,
+               'prefix': prefix}
+        if not nourl and entry.get('url'):
+            msg['url'] = entry['url']
+        if summary:
+            if entry.get('summary'):
+                msg['title'] = entry['summary']
+        else:
+            if entry.get('title'):
+                msg['title'] = entry['title']
+            if entry.get('summary'):
+                msg['summary'] = entry['summary']
+        print(dumps(msg))
+
+
+if __name__ == '__main__':
+    from socket import setdefaulttimeout
+    from netwatch.memory import memory_load
+    from netwatch.utils import load_config
+    from subprocess import Popen, PIPE
+
+    setdefaulttimeout(20)
+
+    logging.basicConfig(level=logging.INFO,
+        format='[%(asctime)s] %(levelname)s: %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S')
+
+    config = load_config('feeds.yml')
+    default_target = config['target']
+
+    run(config, 'feeds', default_target)
+    run(config, 'tweets', default_target)
+    run(config, 'pages', default_target)

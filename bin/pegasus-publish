@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+# coding: utf-8
+
+from json import load, dump, dumps
+from socket import socket, AF_UNIX
+from time import sleep
+import re
+
+URL_COLOR = 14
+SUMMARY_COLOR = 12
+r_youtube = re.compile(r'^https?://(?:www\.)?youtube\.com/watch\?v=([^&]*)(?:&.*)?$')
+r_twitter = re.compile(r'^https?://mobile\.twitter\.com/(.*)$')
+
+
+def connect_unix(path):
+    s = socket(AF_UNIX)
+    s.connect(path)
+    return s
+
+
+def make_frame(message):
+    packet = dumps(message)
+    frame_uc = '%04u:%s' % (len(packet), packet)
+    return frame_uc.encode('utf8')
+
+
+def load_queue(qfile):
+    try:
+        with open(qfile) as fp:
+            return load(fp)
+    except IOError as e:
+        if e.errno != 2:
+            raise
+    return []
+
+
+def store_queue(qfile, entries):
+    with open(qfile, 'w') as fp:
+        dump(entries, fp, sort_keys=True)
+
+
+def limit(text, length=300):
+    if len(text) > length:
+        return text[:length - 1] + u'…'
+    return text
+
+
+def sane(datum):
+    return re.sub(r'[\x00-\x20]+', ' ', datum).strip()
+
+
+def format_message(msg):
+    """Stylize message for IRC
+    TODO: support pre-colored text"""
+
+    prefix = msg.get('prefix', '')
+    title = msg.get('title')
+    summary = msg.get('summary')
+    if summary and not title:
+        title = summary
+        summary = None
+
+    if title:
+        title = limit(sane(title), 120)
+    if summary:
+        summary = limit(sane(summary))
+
+    link = sane(msg.get('url', ''))
+    m = r_youtube.match(link)
+    if m:
+        link = 'https://youtu.be/' + m.group(1)
+    m = r_twitter.match(link)
+    if m:
+        link = 'https://twitter.com/' + m.group(1)
+
+    text = u'\x02{}\x02 » {}'.format(prefix, title)
+    if link:
+        text += ' \x03{}{}'.format(URL_COLOR, link)
+    if summary:
+        text += ' \x03{}{}'.format(SUMMARY_COLOR, summary)
+    return text
+
+
+def empty_queue(entries, socket):
+    """Spam the queue over RPC"""
+    if not entries:
+        return
+
+    rpc = connect_unix(socket)
+    sleep_time = 0.1
+
+    while entries:
+        msg = entries[0]
+        # TODO: confirmation
+        # TODO: convert to IRC message
+        target = msg.get('target')
+        text = format_message(msg)
+        rpc.sendall(make_frame({'msg': text, 'target': target}))
+        entries.pop(0)
+        # TODO: should be done by RPC server
+        sleep(sleep_time)
+        sleep_time = min(1.5, sleep_time * 2)
+
+
+if __name__ == '__main__':
+    from sys import stdin
+    from json import loads
+
+    queue_file = '.fc/queue'
+    socket_file = '/home/ben/code/irc/rpc.sock'
+
+    entries = load_queue(queue_file)
+    try:
+        for line in stdin:
+            entries.append(loads(line))
+        empty_queue(entries, socket_file)
+    finally:
+        store_queue(queue_file, entries)

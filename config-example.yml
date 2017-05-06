@@ -1,0 +1,44 @@
+# Each message is marked with a target
+target: '#default-target'
+
+
+#
+# Twitter
+#
+
+twitter:
+  bearer-token: 'PutYourTokenHere'
+
+tweets:
+- url: 'https://twitter.com/leahculver'
+  name: leahculver
+  target: '#/prog/'
+  prefix: Leah
+  hours: 4
+
+
+#
+# RSS and Atom feeds
+#
+
+feeds:
+- url: 'https://www.example.com/feeds.rss'
+  name: example_com
+  prefix: Example
+  days: 1
+  show: summary
+
+
+#
+# Web pages
+#
+
+pages:
+- url: 'https://www.openssl.org'
+  name: openssl
+  prefix: OpenSSL
+  days: 1
+  kind: urls
+  patterns:
+    - openssl.org/news/secadv/
+    - openssl.org/pipermail/openssl-announce/
