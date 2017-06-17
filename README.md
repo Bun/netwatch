@@ -27,6 +27,12 @@ A simple cron-style usage example:
     cd $HOME/code/netwatch/
     venv/bin/netwatch feeds.yml 2>>log | bin/pegasus-publish
 
+Mailboxes can also be watched (work in progress) and rendered to HTML:
+
+    #!/bin/sh
+    cd $HOME/code/netwatch/
+    venv/bin/python bin/watchbox user:pass@imap-server /var/www/mails/ http://example.com/mails/ 2>>log | bin/pegasus-publish '#mychannel'
+
 The `pegasus-publish` script is just an example: in this case it outputs
 messages over a UNIX socket to an IRC bot.
 
