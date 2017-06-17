@@ -6,18 +6,59 @@ from json import load, JSONDecodeError
 from datetime import datetime
 
 
-def friendly_time(ts, now):
+def friendly_time(ts, now, future=False):
     if ts is None:
         return '-'
-    dt = datetime.fromtimestamp(ts)
+    dt = datetime.fromtimestamp(ts) - now
+    if dt.total_seconds() < 0:
+        if future:
+            return '[pending]'
+        pfx = '-'
+        dt = -dt
+    else:
+        pfx= ''
     #return str(dt)
-    return str(dt - now)
+    return pfx + str(dt).rsplit('.', 1)[0]
 
 
-def show_cache(path):
+def extract_schedule(blob):
+    def _time(p):
+        if not isinstance(p, dict):
+            return False
+        #    return p
+        if 'entry' in p:
+            return p['entry']
+        #return p['fetched']
+        return False
+    x = {}
+    prev = None
+    last = None
+    for k, v in sorted(blob.get('history', {}).items(),
+                       key=lambda r: (_time(r[1]), r[0])):
+        v = _time(v)
+        if v is False: continue
+        if prev is not None:
+            v += 1800 - (v % 1800)
+            z = datetime.fromtimestamp(v)
+            z = z.strftime('%H:%M')
+            x[z] = x.get(z, 0) + 1
+            #z = int(v - prev)
+            #z -= z % 60 + (60 if z % 60 else 0)
+            #if z > (24*60*60):
+            #    x.add('>1 day')
+            #elif z:
+            #    x.add(str(z))
+        prev = v
+    return ', '.join('%s@%s' % kv for kv in sorted(x.items(),
+                                                   key=lambda r: (-r[1], r[0])))
+
+
+def show_cache(path, schedule):
     now = datetime.now()
     table = []
     keys = ('Name', 'Last', 'Next', 'Cache size')
+    if schedule:
+        keys = keys + ('Schedule',)
     width = [len(k) for k in keys]
     for name in sorted(listdir(path)):
         fname = join(path, name)
@@ -26,29 +67,34 @@ def show_cache(path):
             with open(fname) as fp:
                 blob = load(fp)
             if isinstance(blob, dict):
-                table.append((name,
-                              friendly_time(blob.get('schedule_last_sync'), now),
-                              friendly_time(blob.get('schedule_next_sync'), now),
-                              str(len(blob.get('history', {})))))
+                row = (name,
+                       friendly_time(blob.get('schedule_last_sync'), now),
+                       friendly_time(blob.get('schedule_next_sync'), now, True),
+                       str(len(blob.get('history', {}))))
+                if schedule:
+                    row = row + (extract_schedule(blob),)
+                table.append(row)
                 ok = True
         except JSONDecodeError as e:
             pass
         if not ok:
-            table.append((name, '?', '?', '?'))
+            table.append((name, '?', '?', '?') + (('?',) if schedule else ()))
         width = [max(a, len(b)) for a, b in zip(width, table[-1])]
 
     print(' '.join(k.ljust(w) for w, k in zip(width, keys)))
     print(' '.join('-' * w for w in width))
     for r in table:
-        print(' '.join(v.ljust(w) if i == 0 else v.rjust(w)
+        print(' '.join(v.ljust(w) if i in (0, 4) else v.rjust(w)
                        for i, (w, v) in enumerate(zip(width, r))))
 
 
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
-    parser = ArgumentParser(description='netwatch')
+    parser = ArgumentParser(description='nw-cache')
     parser.add_argument('--session-data', default='.session',
                         help='Directory to store state in between runs')
+    parser.add_argument('--schedule', action='store_true',
+                        help='Check optimal schedule')
     opts = parser.parse_args()
-    show_cache(opts.session_data)
+    show_cache(opts.session_data, opts.schedule)

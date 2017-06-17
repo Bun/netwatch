@@ -46,7 +46,7 @@ current working directory.
 
 ## TODO
 
-- Tool to inspect cache/view scheduled times
+- Different schedules for just-had-update and no-updates
+    - Store entry time vs fetched time
 - Error monitoring
-- Mail?
 - Webpage export?

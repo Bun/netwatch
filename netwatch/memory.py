@@ -34,12 +34,18 @@ def memory_save(fname, memory):
     history = memory.get('history', {})
     if len(history) > CACHE_MIN_SIZE:
         expire = time() - CACHE_MAX_TIME
-        memory['history'] = {k: v for k, v in history.items() if v > expire}
+        def expired(v):
+            t = v['fetched'] if isinstance(v, dict) else v
+            return t > expire
+        memory['history'] = {k: v for k, v in history.items() if expired(v)}
     with open(fname, 'w') as fp:
-        dump(memory, fp)
+        dump(memory, fp, indent=True)
 
 
-def memory_learn(mem, key):
+def memory_learn(mem, key, entry_time=None):
     ret = key in mem['history']
-    mem['history'][key] = time()
+    v = {'fetched': int(time())}
+    if entry_time is not None:
+        v['entry'] = entry_time
+    mem['history'][key] = v
     return ret

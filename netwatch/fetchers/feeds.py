@@ -5,6 +5,7 @@ Atom/RSS feed parsing
 import logging
 import feedparser
 from base64 import b64encode
+from calendar import timegm
 
 from ..utils import dehtml
 
@@ -16,7 +17,6 @@ def init(config):
     user_agent = config.get('user-agent-extra')
     if user_agent:
         feedparser.USER_AGENT += user_agent
-
 
 
 def _get_feed(url, mod_info, auth):
@@ -89,10 +89,12 @@ def fetch(state, info):
         # TODO: make sure additional media is added (images)
         if title == summary:
             summary = ''
+        at = timegm(entry.published_parsed)
         entries.append({'key': key,
                         'title': title,
                         'summary': summary,
-                        'url': item_url})
+                        'url': item_url,
+                        'time': at})
     return entries
 
 

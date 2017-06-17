@@ -1,0 +1,29 @@
+#!/usr/bin/env python3
+
+from os.path import join
+from json import load, dump
+
+
+def modify(fn):
+    with open(fn) as fp:
+        obj = load(fp)
+    if not isinstance(obj, dict):
+        return
+    obj['schedule_next_sync'] = 1
+    with open(fn, 'w') as fp:
+        dump(obj, fp, indent=True)
+
+
+if __name__ == '__main__':
+    from argparse import ArgumentParser
+    parser = ArgumentParser(description='nw-now')
+    parser.add_argument('--session-data', default='.session',
+                        help='Directory to store state in between runs')
+    parser.add_argument('items', nargs='+',
+                        help='Item names')
+    opts = parser.parse_args()
+    for i in opts.items:
+        if '/' in i:
+            modify(i)
+        else:
+            modify(join(opts.session_data, i))
