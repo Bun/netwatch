@@ -41,7 +41,7 @@ def store_queue(qfile, entries):
 
 def limit(text, length=300):
     if len(text) > length:
-        return text[:length - 1] + u'…'
+        return text[:length - 1] + '…'
     return text
 
 
@@ -61,7 +61,7 @@ def format_message(msg):
         summary = None
 
     if title:
-        title = limit(sane(title), 120)
+        title = limit(sane(title), 200)
     if summary:
         summary = limit(sane(summary))
 
@@ -81,7 +81,7 @@ def format_message(msg):
     return text
 
 
-def empty_queue(entries, socket):
+def empty_queue(entries, socket, default_target):
     """Spam the queue over RPC"""
     if not entries:
         return
@@ -93,7 +93,7 @@ def empty_queue(entries, socket):
         msg = entries[0]
         # TODO: confirmation
         # TODO: convert to IRC message
-        target = msg.get('target')
+        target = msg.get('target', default_target)
         text = format_message(msg)
         rpc.sendall(make_frame({'msg': text, 'target': target}))
         entries.pop(0)
@@ -103,16 +103,17 @@ def empty_queue(entries, socket):
 
 
 if __name__ == '__main__':
-    from sys import stdin
+    from sys import stdin, argv
     from json import loads
 
     queue_file = '.session/queue'
     socket_file = '/home/ben/code/irc/rpc.sock'
+    default_target = argv[1] if argv[1:] else None
 
     entries = load_queue(queue_file)
     try:
         for line in stdin:
             entries.append(loads(line))
-        empty_queue(entries, socket_file)
+        empty_queue(entries, socket_file, default_target)
     finally:
         store_queue(queue_file, entries)

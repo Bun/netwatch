@@ -1,0 +1,99 @@
+#!/usr/bin/env python3
+
+from imaplib import IMAP4_SSL
+from calendar import timegm
+from time import strftime
+from email.parser import BytesParser
+from email.utils import parsedate
+from os.path import join
+from urllib.parse import quote
+from hashlib import sha256
+
+from netwatch.mail import _decode_header, render_mail
+
+
+def parse_mailbox(mbox):
+    """
+    Restrictions: username cannot contain the ``:`` character.
+    """
+    user, mbox = mbox.split(':', 1)
+    password, domain = mbox.rsplit('@', 1)
+    return user, password, domain
+
+
+def fetch_messages(user, password, domain, action_on_read='delete'):
+    m = IMAP4_SSL(domain)
+    m.login(user, password)
+
+    try:
+        #m.select(readonly=True)
+        m.select()
+        try:
+            _, data = m.search(None, '(UNSEEN)')
+            for num in data[0].split():
+                typ, data = m.fetch(num, '(RFC822)')
+                bp = BytesParser()
+                yield bp.parsebytes(data[0][1])
+                # Prevent exceptions from messing things up
+                if action_on_read == 'delete':
+                    m.store(num, '+FLAGS', '\\Deleted')
+                #elif action_on_read == 'read':
+                #    m.store(num, '+FLAGS', '\\Seen')
+            if action_on_read == 'delete':
+                m.expunge()
+        finally:
+            m.close()
+    finally:
+        m.logout()
+
+def create_message_id(msg):
+    #full_id = msg['Message-ID'].strip('<>')
+    #return full_id
+    m = sha256()
+    m.update(str(msg).encode('utf8'))
+    slug = m.hexdigest()[:6] + '-'
+    for c in _decode_header(msg['Subject']):
+        if c.isalnum():
+            slug += c
+        elif slug[-1:] != '-':
+            slug += '-'
+    return slug.rstrip('-').lower()
+
+
+def export_message(basedir, msg):
+    msg_time = strftime('%Y%m%d-%H%M%S', parsedate(msg['Date']))
+    msg_id = quote(create_message_id(msg), safe='@')
+    fname = '%s.%s.htm' % (msg_time, msg_id)
+    with open(join(basedir, fname), 'x') as fp:
+        render_mail(msg, fp)
+    return fname
+
+
+def generate_blob(msg):
+    subj = _decode_header(msg['Subject']) or '[no subject]'
+    return {'title': subj,
+            'time': timegm(parsedate(msg['Date']))}
+
+
+if __name__ == '__main__':
+    from sys import argv, stderr
+    from json import dumps
+
+    if len(argv) < 2:
+        exit(1)
+
+    export_dir = argv[2] if argv[2:] else None
+    url_pattern = argv[3] if argv[3:] else None
+
+    mailbox = parse_mailbox(argv[1])
+    for msg in fetch_messages(*mailbox, action_on_read='read'):
+        blob = generate_blob(msg)
+        try:
+            if export_dir:
+                fn = export_message(export_dir, msg)
+                if url_pattern:
+                    blob['url'] = url_pattern + quote(fn, safe='')
+        except Exception as e:
+            print('Failed to export message:', e, file=stderr)
+            raise
+        print(dumps(blob))
