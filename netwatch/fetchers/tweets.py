@@ -3,7 +3,7 @@ from twitter import Twitter, OAuth2
 from urllib.parse import urlparse
 from time import strptime
 from calendar import timegm
-import logging
+from pprint import pprint
 
 tw = Twitter()
 
@@ -35,9 +35,8 @@ def fetch(state, info, verbose=False):
     # include_rts
     latest_id = None
     for t in tw.statuses.user_timeline(screen_name=user, count=10, trim_user=1,
-                                       **kwargs):
+                                       tweet_mode='extended', **kwargs):
         if verbose:
-            from pprint import pprint
             pprint(t)
         post_id = t['id']
         if latest_id is None or post_id > latest_id:
@@ -47,7 +46,7 @@ def fetch(state, info, verbose=False):
         url_map = {}
         for m in t.get('extended_entities', {}).get('media', []):
             url_map[m['url']] = m.get('media_url_https') or m['url']
-        text = ' '.join(url_map.get(v, v) for v in t['text'].split())
+        text = ' '.join(url_map.get(v, v) for v in t['full_text'].split())
         at = _parse_time(t['created_at'])
         data.append({'url': href,
                      'title': text,
@@ -59,7 +58,6 @@ def fetch(state, info, verbose=False):
 
 if __name__ == '__main__':
     from sys import argv
-    from pprint import pprint
     from netwatch.utils import load_config
 
     if argv[1:] and argv[1:] == 'bearer-token':
