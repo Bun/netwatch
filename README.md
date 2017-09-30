@@ -5,6 +5,7 @@ A collection of tools to watch for new content on the Internet.
 * RSS/Atom feeds
 * Twitter feeds
 * URLs on webpages (work in progress)
+* Mailbox rendering (work in progress)
 
 New content updates are sent as single-line JSON blobs, which can then be
 further processed by the tool of your choosing.
