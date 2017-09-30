@@ -73,7 +73,11 @@ def format_message(msg):
     if m:
         link = 'https://twitter.com/' + m.group(1)
 
-    text = u'\x02{}\x02 » {}'.format(prefix, title)
+    if prefix:
+        text = '\x02{}\x02 » '.format(prefix)
+    else:
+        text = '\x02🖂 \x02 '
+    text += title
     if link:
         text += ' \x03{}{}'.format(URL_COLOR, link)
     if summary:

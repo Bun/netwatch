@@ -67,7 +67,7 @@ def fetch(state, info):
                            auth)
 
     if 'url' in mod:
-        if mod['url'] != feed.info.url:
+        if mod['url'] != url:
             # Report changed URL
             msg = u'Feed moved: {} (HTTP {})'.format(mod['url'],
                                                      mod.get('status'))
@@ -89,12 +89,13 @@ def fetch(state, info):
         # TODO: make sure additional media is added (images)
         if title == summary:
             summary = ''
-        at = timegm(entry.published_parsed)
-        entries.append({'key': key,
-                        'title': title,
-                        'summary': summary,
-                        'url': item_url,
-                        'time': at})
+        obj = {'key': key,
+               'title': title,
+               'summary': summary,
+               'url': item_url}
+        if hasattr(entry, 'published_parsed'):
+            obj['at'] = timegm(entry.published_parsed)
+        entries.append(obj)
     return entries
 
 

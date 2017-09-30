@@ -109,6 +109,8 @@ def relay_message(default_target, info, entries):
         if summary:
             if entry.get('summary'):
                 msg['title'] = entry['summary']
+            elif entry.get('title'):
+                msg['title'] = entry['title']
         else:
             if entry.get('title'):
                 msg['title'] = entry['title']
