@@ -41,6 +41,7 @@ def only_urls(v):
         return v
     return ''
 
+
 def crazy_html(text):
     #return '[omitted]'
     #durl = 'data:text/html;base64,' + b64encode(text.encode('utf8')).decode('utf8')
@@ -79,6 +80,46 @@ def crazy_html(text):
         trailer = '<!-- ' + trailer + ' -->'
     return str(b) + trailer
 
+MULTIPART_ACCEPTABLE = {'multipart/signed',
+                        'multipart/mixed',
+                        'multipart/alternative'}
+
+def recursive_collect_text(msg):
+    def _decode(text):
+        if isinstance(text, bytes):
+            return text.decode('utf8')
+        return text
+
+    def _rendered(ct, part, payload):
+        html = plaintext = ''
+        if ct in MULTIPART_ACCEPTABLE:
+            return recursive_collect_text(part)
+        elif ct == 'text/html':
+            html = payload
+        elif ct.startswith('text/'):
+            plaintext = payload
+        else:
+            plaintext = '[omitted ' + ct + ']'
+        if plaintext:
+            plaintext = '<pre class="payload">' + escape(plaintext) + '</pre>'
+        if html:
+            html = '<div class="payload">' + crazy_html(html) + '</div>'
+        return html, plaintext
+
+    ct = msg.get_content_type()
+    if ct in MULTIPART_ACCEPTABLE:
+        parts = msg.get_payload()
+        if not isinstance(parts, list):
+            return '', '<pre class="payload">[invalid ' + escape(ct) + ' ignored]</pre>'
+        html = plaintext = ''
+        for part in parts:
+            ct = part.get_content_type()
+            r = _rendered(ct, part, _decode(part.get_payload(decode=True)))
+            html += r[0]
+            plaintext += r[1]
+        return html, plaintext
+    return _rendered(ct, msg, _decode(msg.get_payload(decode=True)))
+
 
 def render_mail(msg, fp):
     subj = _decode_header(msg['Subject'])
@@ -88,31 +129,7 @@ def render_mail(msg, fp):
     for h in ('To', 'Sender', 'From', 'CC', 'BCC', 'Subject', 'Date'):
         print_addresses(msg, h, fp)
     print('</header><section>', file=fp)
-    payload = msg.get_payload()
-    if not isinstance(payload, list):
-        payload = [payload]
-    plaintext = None
-    html = None
-    for part in payload:
-        plain = True
-        if hasattr(part, 'get_content_type'):
-            ct = part.get_content_type()
-            #print('<p><em>Content-Type:', escape(ct), '</em>', file=fp)
-            if ct == 'text/html':
-                text = part.get_payload(decode=True)
-                plain = False
-            elif ct.startswith('text/'):
-                text = part.get_payload(decode=True)
-            else:
-                text = '[omitted]'
-        else:
-            text = part
-        if isinstance(text, bytes):
-            text = text.decode('utf8')
-        if plain:
-            plaintext = '<pre class="payload">' + escape(text) + '</pre>'
-        else:
-            html = '<div class="payload">' + crazy_html(text) + '</div>'
+    html, plaintext = recursive_collect_text(msg)
     if html:
         print(html, file=fp)
     else:
