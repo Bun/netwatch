@@ -126,7 +126,7 @@ def render_mail(msg, fp):
     print('<!DOCTYPE HTML><html><head><meta charset="utf8"><link href="m.css" rel="stylesheet" type="text/css">', file=fp)
     print('<title>', subj, '</title>', sep='', file=fp)
     print('</head><body><header>', file=fp)
-    for h in ('To', 'Sender', 'From', 'CC', 'BCC', 'Subject', 'Date'):
+    for h in ('To', 'Sender', 'From', 'CC', 'BCC', 'Subject', 'Date', 'Message-ID'):
         print_addresses(msg, h, fp)
     print('</header><section>', file=fp)
     html, plaintext = recursive_collect_text(msg)

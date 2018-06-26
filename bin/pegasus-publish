@@ -77,7 +77,8 @@ def format_message(msg):
         text = '\x02{}\x02 » '.format(prefix)
     else:
         text = '\x02🖂 \x02 '
-    text += title
+    if title:
+        text += title
     if link:
         text += ' \x03{}{}'.format(URL_COLOR, link)
     if summary:

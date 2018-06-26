@@ -40,9 +40,7 @@ def filter_new_items(memory, items):
         entry_time = entry.get('time')
         if key and memory_learn(memory, key, entry_time):
             continue
-        # XXX!
-        if len(new_entries) < 6:
-            new_entries.append(entry)
+        new_entries.append(entry)
     return new_entries
 
 
@@ -85,7 +83,11 @@ def run(cfg, k, default_target):
             feed.memory['schedule_next_sync'] = sync.timestamp()
 
             entries = filter_new_items(feed.memory, result)
-            # TODO: limit
+            if len(entries) > 4 and not blob.get('all'):
+                # TODO: config option
+                logging.warn('%s | Too many entries, showing last 4', url)
+                entries = entries[-4:]
+
             relay_message(default_target, feed.info, entries)
 
         # Save mem
